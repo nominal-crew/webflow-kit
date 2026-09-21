@@ -25,7 +25,9 @@ The kit never uploads on save. Staging and production change only when you deplo
 pnpm add -D @nominalcrew/webflow-kit
 ```
 
-Until published, a sibling checkout:
+Node.js 24+. Peer: Vite 8.
+
+To work on the kit itself next to a site:
 
 ```json
 {
@@ -34,8 +36,6 @@ Until published, a sibling checkout:
   }
 }
 ```
-
-Node.js 24+. Peer: Vite 8.
 
 ### 1. Site `vite.config.js`
 
@@ -177,21 +177,11 @@ Default server: `host: true`, `strictPort: true`, `cors: true`, HMR on `wss://lo
 
 ## Publish
 
-The license is `UNLICENSED` (agency use only). Publish with public access so site repos can install it without a paid npm org.
+The package is on npm: [`@nominalcrew/webflow-kit`](https://www.npmjs.com/package/@nominalcrew/webflow-kit). License: `UNLICENSED` (agency use only).
 
-You need an npm user that belongs to the `@nominalcrew` org, then:
+To release a new version, bump `version` in `package.json`, then:
 
 ```bash
 npm login
 pnpm publish --access public
-```
-
-Sites then depend on a version instead of `link:`:
-
-```json
-{
-  "devDependencies": {
-    "@nominalcrew/webflow-kit": "^0.1.0"
-  }
-}
 ```
