@@ -1,7 +1,7 @@
 {
   "name": "@nominalcrew/webflow-kit",
-  "version": "0.2.0",
-  "description": "Vite plugin and CLI for Webflow sites: local HTTPS, staging JS+CSS sync on save, and R2 deploys.",
+  "version": "0.3.0",
+  "description": "Vite plugin and CLI for Webflow sites: local HTTP dev, staging JS+CSS sync on save, and R2 deploys.",
   "license": "UNLICENSED",
   "author": "Nominal Crew",
   "repository": {
@@ -38,7 +38,6 @@
   ],
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",
-    "@vitejs/plugin-basic-ssl": "^2.0.0",
     "dotenv": "^17.0.0"
   },
   "peerDependencies": {

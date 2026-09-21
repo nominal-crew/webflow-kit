@@ -42,13 +42,13 @@ function resolveServer(rawServer = {}) {
     open,
     ...rawServer,
     port,
-    origin: rawServer.origin ?? `https://localhost:${port}`,
+    origin: rawServer.origin ?? `http://localhost:${port}`,
     hmr: {
       host: 'localhost',
-      protocol: 'wss',
+      protocol: 'ws',
       clientPort: port,
       ...rawServer.hmr
-    }
+    },
   };
 }
 

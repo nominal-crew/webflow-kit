@@ -1,5 +1,3 @@
-import basicSsl from '@vitejs/plugin-basic-ssl';
-
 import { resolveOptions } from './config.js';
 import { createStagingSyncPlugin } from './staging-sync.js';
 
@@ -54,5 +52,5 @@ function createConfigPlugin(options) {
 export function webflowKit(rawOptions = {}) {
   const options = resolveOptions(rawOptions);
 
-  return [basicSsl(), createConfigPlugin(options), createStagingSyncPlugin(options)];
+  return [createConfigPlugin(options), createStagingSyncPlugin(options)];
 }

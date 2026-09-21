@@ -4,7 +4,7 @@ Vite plugin and CLI for Webflow site repos. Internal agency tooling, published p
 
 It does **not** ship a CDN origin. Each site passes its own `cdn` (or `PUBLIC_ASSET_URL` in `.env`).
 
-- **Dev:** HTTPS Vite on `https://localhost:3000`, then open the site’s Webflow staging URL with `?nc-env=dev` so the site loader pulls local modules. JS and CSS are also rebuilt and uploaded to `{name}/staging/` on start and on every save.
+- **Dev:** HTTP Vite on `http://localhost:3000`, then open the site’s Webflow staging URL with `?nc-env=dev` so the site loader pulls local modules. JS and CSS are also rebuilt and uploaded to `{name}/staging/` on start and on every save.
 - **Deploy:** upload `dist/bundle.js` and `dist/bundle.css` to R2 under `{name}/staging/` or `{name}/production/`.
 
 This directory is the **package root**. Depend on it from each site; do not copy it into a site as source.
@@ -13,7 +13,7 @@ This directory is the **package root**. Depend on it from each site; do not copy
 
 | Command in the site repo | What the kit does |
 | ------------------------ | ----------------- |
-| `pnpm dev` (`vite`) | HTTPS dev server, CORS, CSS HMR, full reload on JS, open `WEBFLOW_STAGING_URL?nc-env=dev`, upload staging JS + CSS on save |
+| `pnpm dev` (`vite`) | HTTP dev server, CORS, CSS HMR, full reload on JS, open `WEBFLOW_STAGING_URL?nc-env=dev`, upload staging JS + CSS on save |
 | `pnpm deploy:staging` | Build unminified + sourcemaps, upload JS + CSS to `{name}/staging/` |
 | `pnpm deploy:production` | Build minified, upload to `{name}/production/` |
 
@@ -132,14 +132,14 @@ The `<link>` must come **before** the script. Publish the site once so `.webflow
 pnpm dev
 ```
 
-1. Vite listens on `https://localhost:3000`.
+1. Vite listens on `http://localhost:3000`.
 2. The browser opens `{WEBFLOW_STAGING_URL}?nc-env=dev`.
 3. The loader injects `@vite/client` and `/src/js/main.js`.
 4. Staging JS + CSS are uploaded (`{name}/staging/bundle.*`).
 5. Save CSS → HMR on the published tab, and staging is uploaded again. Refresh the Designer to see CSS in the canvas.
 6. Save JS → full page reload on the published tab, and staging JS + CSS are uploaded. `.webflow.io` without `?nc-env=dev` then has the last save.
 
-First run: if scripts fail, open `https://localhost:3000` and accept the self-signed certificate, then reload Webflow.
+First run: if scripts fail, confirm Vite is running, then reload the Webflow tab.
 
 ```bash
 pnpm deploy:staging      # QA / client on *.webflow.io (no ?nc-env=dev)
@@ -175,9 +175,9 @@ webflow-kit deploy production
 | `assets.css` | `bundle.css` | Uploaded CSS filename |
 | `environments.staging.path` | `staging` | Folder under `{name}/` |
 | `environments.production.path` | `production` | Folder under `{name}/` |
-| `server` | HTTPS `localhost:3000` | Vite `server` overrides |
+| `server` | HTTP `localhost:3000` | Vite `server` overrides |
 
-Default server: `host: true`, `strictPort: true`, `cors: true`, HMR on `wss://localhost:3000`. Override via `server` in `webflow.config.js` if a site cannot use port 3000 — then set the loader `data-dev-origin` to match.
+Default server: `host: true`, `strictPort: true`, `cors: true`, HMR on `ws://localhost:3000`. Override via `server` in `webflow.config.js` if a site cannot use port 3000 — then set the loader `data-dev-origin` to match.
 
 ## Publish
 
