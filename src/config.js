@@ -1,3 +1,11 @@
+export function isStagingSyncEnabled() {
+  const raw = (process.env.WEBFLOW_SYNC_STAGING || process.env.WEBFLOW_SYNC_STAGING_CSS || 'true')
+    .trim()
+    .toLowerCase();
+
+  return raw !== '0' && raw !== 'false' && raw !== 'off';
+}
+
 export function getDevOpenUrl() {
   const raw = (process.env.WEBFLOW_STAGING_URL || '').trim();
 

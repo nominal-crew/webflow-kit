@@ -4,7 +4,7 @@ Vite plugin and CLI for Webflow site repos. Internal agency tooling, published p
 
 It does **not** ship a CDN origin. Each site passes its own `cdn` (or `PUBLIC_ASSET_URL` in `.env`).
 
-- **Dev:** HTTPS Vite on `https://localhost:3000`, then open the site’s Webflow staging URL with `?nc-env=dev` so the site loader pulls local modules.
+- **Dev:** HTTPS Vite on `https://localhost:3000`, then open the site’s Webflow staging URL with `?nc-env=dev` so the site loader pulls local modules. JS and CSS are also rebuilt and uploaded to `{name}/staging/` on start and on every save.
 - **Deploy:** upload `dist/bundle.js` and `dist/bundle.css` to R2 under `{name}/staging/` or `{name}/production/`.
 
 This directory is the **package root**. Depend on it from each site; do not copy it into a site as source.
@@ -13,11 +13,11 @@ This directory is the **package root**. Depend on it from each site; do not copy
 
 | Command in the site repo | What the kit does |
 | ------------------------ | ----------------- |
-| `pnpm dev` (`vite`) | HTTPS dev server, CORS, CSS HMR, full reload on JS, open `WEBFLOW_STAGING_URL?nc-env=dev` |
-| `pnpm deploy:staging` | Build unminified + sourcemaps, upload to `{name}/staging/` |
+| `pnpm dev` (`vite`) | HTTPS dev server, CORS, CSS HMR, full reload on JS, open `WEBFLOW_STAGING_URL?nc-env=dev`, upload staging JS + CSS on save |
+| `pnpm deploy:staging` | Build unminified + sourcemaps, upload JS + CSS to `{name}/staging/` |
 | `pnpm deploy:production` | Build minified, upload to `{name}/production/` |
 
-The kit never uploads on save. Staging and production change only when you deploy.
+`pnpm dev` uploads JS + CSS to **staging only** (never production). Production still requires `deploy:production`. Disable the save-sync with `WEBFLOW_SYNC_STAGING=false`.
 
 ## Add it to a site
 
@@ -88,6 +88,7 @@ Copy `.env.example` from this repo into the **site**.
 | -------- | -------- | ---- |
 | `PUBLIC_ASSET_URL` | for public deploy URLs | CDN origin passed as `cdn` |
 | `WEBFLOW_STAGING_URL` | for `pnpm dev` | Published `*.webflow.io` URL; opened with `?nc-env=dev` |
+| `WEBFLOW_SYNC_STAGING` | no | Default `true`. Set `false` to skip JS+CSS uploads during `pnpm dev` |
 | `R2_ACCOUNT_ID` | for deploy | Cloudflare account id |
 | `R2_ACCESS_KEY_ID` | for deploy | R2 access key |
 | `R2_SECRET_ACCESS_KEY` | for deploy | R2 secret |
@@ -102,13 +103,14 @@ If `WEBFLOW_STAGING_URL` is empty, Vite still starts and logs a warning. It does
 
 ### 4. Webflow
 
-One loader script in Custom Code (head). Host that loader on **your** CDN. `data-project` must equal `name`:
+Site Settings → Custom Code → Head. Staging CSS first (static `<link>`, so the Designer canvas can load it), then the loader. Do not add `bundle.js`. Host the loader on **your** CDN. `data-project` must equal `name`:
 
 ```html
+<link rel="stylesheet" href="https://cdn.example.com/my-site/staging/bundle.css" />
 <script src="https://cdn.example.com/loader.js" data-project="my-site"></script>
 ```
 
-Do not paste `bundle.js` / `bundle.css` into Webflow. Publish the site once so `.webflow.io` exists, then put that URL in `WEBFLOW_STAGING_URL`.
+The `<link>` must come **before** the script. Publish the site once so `.webflow.io` exists, then put that URL in `WEBFLOW_STAGING_URL`.
 
 ### 5. Site `package.json` scripts
 
@@ -133,7 +135,9 @@ pnpm dev
 1. Vite listens on `https://localhost:3000`.
 2. The browser opens `{WEBFLOW_STAGING_URL}?nc-env=dev`.
 3. The loader injects `@vite/client` and `/src/js/main.js`.
-4. Save CSS → HMR. Save JS → full page reload.
+4. Staging JS + CSS are uploaded (`{name}/staging/bundle.*`).
+5. Save CSS → HMR on the published tab, and staging is uploaded again. Refresh the Designer to see CSS in the canvas.
+6. Save JS → full page reload on the published tab, and staging JS + CSS are uploaded. `.webflow.io` without `?nc-env=dev` then has the last save.
 
 First run: if scripts fail, open `https://localhost:3000` and accept the self-signed certificate, then reload Webflow.
 

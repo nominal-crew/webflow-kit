@@ -1,9 +1,11 @@
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
 import { resolveOptions } from './config.js';
+import { createStagingSyncPlugin } from './staging-sync.js';
 
 function createConfigPlugin(options) {
   const isProduction = options.mode === 'production';
+  const isStagingSync = process.env.WEBFLOW_STAGING_SYNC === '1';
 
   return {
     name: 'webflow-kit-config',
@@ -12,7 +14,7 @@ function createConfigPlugin(options) {
         build: {
           outDir: options.outDir,
           emptyOutDir: true,
-          sourcemap: !isProduction,
+          sourcemap: isStagingSync ? false : !isProduction,
           minify: isProduction ? 'oxc' : false,
           lib: {
             entry: options.entry,
@@ -49,22 +51,8 @@ function createConfigPlugin(options) {
   };
 }
 
-function createHmrPlugin() {
-  return {
-    name: 'webflow-kit-hmr',
-    handleHotUpdate({ file, server }) {
-      if (/\.css$/i.test(file.replaceAll('\\', '/'))) {
-        return;
-      }
-
-      server.ws.send({ type: 'full-reload', path: '*' });
-      return [];
-    }
-  };
-}
-
 export function webflowKit(rawOptions = {}) {
   const options = resolveOptions(rawOptions);
 
-  return [basicSsl(), createConfigPlugin(options), createHmrPlugin()];
+  return [basicSsl(), createConfigPlugin(options), createStagingSyncPlugin(options)];
 }

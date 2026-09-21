@@ -1,7 +1,7 @@
 {
   "name": "@nominalcrew/webflow-kit",
   "version": "0.1.0",
-  "description": "Vite plugin and CLI for Webflow sites: local HTTPS dev server and R2 staging/production deploys.",
+  "description": "Vite plugin and CLI for Webflow sites: local HTTPS, staging JS+CSS sync on save, and R2 deploys.",
   "license": "UNLICENSED",
   "author": "Nominal Crew",
   "repository": {
