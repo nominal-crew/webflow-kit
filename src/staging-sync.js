@@ -1,7 +1,7 @@
-import { build } from 'vite';
+import { build } from "vite";
 
-import { isStagingSyncEnabled } from './config.js';
-import { hasR2Credentials, uploadStagingAssets } from './r2-deploy.js';
+import { isStagingSyncEnabled } from "./config.js";
+import { hasR2Credentials, uploadStagingAssets } from "./r2-deploy.js";
 
 const SOURCE_FILE = /\.(css|js|mjs|cjs)$/i;
 const CSS_FILE = /\.css$/i;
@@ -45,22 +45,31 @@ function createScheduler(task) {
 }
 
 async function buildStagingAssets(options) {
-  process.env.WEBFLOW_STAGING_SYNC = '1';
+  process.env.WEBFLOW_STAGING_SYNC = "1";
 
   try {
     const result = await build({
-      mode: 'staging',
-      logLevel: 'silent',
+      mode: "staging",
+      logLevel: "silent",
       build: {
         write: false,
         emptyOutDir: false,
-        sourcemap: false
-      }
+        sourcemap: false,
+      },
     });
 
-    const outputs = (Array.isArray(result) ? result : [result]).flatMap((item) => item.output || []);
-    const js = outputs.find((item) => item.type === 'chunk' && item.fileName === options.assets.js);
-    const css = outputs.find((item) => item.type === 'asset' && item.fileName === options.assets.css);
+    const outputs = (Array.isArray(result) ? result : [result]).flatMap(
+      (item) => item.output || [],
+    );
+    const js = outputs.find(
+      (item) => item.type === "chunk" && item.fileName === options.assets.js,
+    );
+    const css = outputs.find(
+      (item) => item.type === "asset" && item.fileName === options.assets.css,
+    );
+    const chunks = outputs.filter(
+      (item) => item.type === "chunk" && item.fileName !== options.assets.js,
+    );
 
     if (!js?.code) {
       throw new Error(`Build did not produce ${options.assets.js}`);
@@ -72,7 +81,11 @@ async function buildStagingAssets(options) {
 
     return {
       js: js.code,
-      css: css.source
+      css: css.source,
+      chunks: chunks.map((item) => ({
+        fileName: item.fileName,
+        code: item.code,
+      })),
     };
   } finally {
     delete process.env.WEBFLOW_STAGING_SYNC;
@@ -80,13 +93,15 @@ async function buildStagingAssets(options) {
 }
 
 async function syncStaging(options) {
-  console.log('[webflow-kit] Syncing staging JS + CSS…');
+  console.log("[webflow-kit] Syncing staging JS + CSS…");
 
   const assets = await buildStagingAssets(options);
   const uploaded = await uploadStagingAssets(assets, options);
 
   for (const file of uploaded) {
-    console.log(`[webflow-kit] Staging → ${file.publicUrl || file.destination}`);
+    console.log(
+      `[webflow-kit] Staging → ${file.publicUrl || file.destination}`,
+    );
   }
 }
 
@@ -94,15 +109,17 @@ export function createStagingSyncPlugin(options) {
   let schedule = () => {};
 
   return {
-    name: 'webflow-kit-staging-sync',
-    apply: 'serve',
+    name: "webflow-kit-staging-sync",
+    apply: "serve",
     configureServer() {
       if (!isStagingSyncEnabled()) {
         return;
       }
 
       if (!hasR2Credentials()) {
-        console.warn('[webflow-kit] Staging is not synced: missing R2 credentials.');
+        console.warn(
+          "[webflow-kit] Staging is not synced: missing R2 credentials.",
+        );
         return;
       }
 
@@ -113,8 +130,9 @@ export function createStagingSyncPlugin(options) {
       };
     },
     handleHotUpdate({ file, server }) {
-      const normalized = file.replaceAll('\\', '/');
-      const isIgnored = normalized.includes('/node_modules/') || normalized.includes('/dist/');
+      const normalized = file.replaceAll("\\", "/");
+      const isIgnored =
+        normalized.includes("/node_modules/") || normalized.includes("/dist/");
       const isSource = SOURCE_FILE.test(normalized);
       const isCss = CSS_FILE.test(normalized);
 
@@ -126,8 +144,8 @@ export function createStagingSyncPlugin(options) {
         return;
       }
 
-      server.ws.send({ type: 'full-reload', path: '*' });
+      server.ws.send({ type: "full-reload", path: "*" });
       return [];
-    }
+    },
   };
 }

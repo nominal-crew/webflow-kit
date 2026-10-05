@@ -5,17 +5,17 @@ Vite plugin and CLI for Webflow site repos. Internal agency tooling, published p
 It does **not** ship a CDN origin. Each site passes its own `cdn` (or `PUBLIC_ASSET_URL` in `.env`).
 
 - **Dev:** HTTP Vite on `http://localhost:3000`, then open the site’s Webflow staging URL with `?nc-env=dev` so the site loader pulls local modules. JS and CSS are also rebuilt and uploaded to `{name}/staging/` on start and on every save.
-- **Deploy:** upload `dist/bundle.js` and `dist/bundle.css` to R2 under `{name}/staging/` or `{name}/production/`.
+- **Deploy:** upload `dist/bundle.js`, `dist/bundle.css`, and code-split chunks (`dist/assets/[name]-[hash].js`) to R2 under `{name}/staging/` or `{name}/production/`.
 
 This directory is the **package root**. Depend on it from each site; do not copy it into a site as source.
 
 ## What a site gets
 
-| Command in the site repo | What the kit does |
-| ------------------------ | ----------------- |
-| `pnpm dev` (`vite`) | HTTP dev server, CORS, CSS HMR, full reload on JS, open `WEBFLOW_STAGING_URL?nc-env=dev`, upload staging JS + CSS on save |
-| `pnpm deploy:staging` | Build unminified + sourcemaps, upload JS + CSS to `{name}/staging/` |
-| `pnpm deploy:production` | Build minified, upload to `{name}/production/` |
+| Command in the site repo | What the kit does                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev` (`vite`)      | HTTP dev server, CORS, CSS HMR, full reload on JS, open `WEBFLOW_STAGING_URL?nc-env=dev`, upload staging JS + CSS on save |
+| `pnpm deploy:staging`    | Build unminified + sourcemaps, upload JS, CSS, and chunks to `{name}/staging/`                                            |
+| `pnpm deploy:production` | Build minified, upload JS, CSS, and chunks to `{name}/production/`                                                        |
 
 `pnpm dev` uploads JS + CSS to **staging only** (never production). Production still requires `deploy:production`. Disable the save-sync with `WEBFLOW_SYNC_STAGING=false`.
 
@@ -42,19 +42,19 @@ To work on the kit itself next to a site:
 Load `.env` **before** the plugin so `process.env` is filled. Secrets and the CDN origin stay in the site `.env`, never in this package.
 
 ```js
-import 'dotenv/config';
-import { defineConfig } from 'vite';
-import { webflowKit } from '@nominalcrew/webflow-kit';
-import config from './webflow.config.js';
+import "dotenv/config";
+import { defineConfig } from "vite";
+import { webflowKit } from "@nominalcrew/webflow-kit";
+import config from "./webflow.config.js";
 
 export default defineConfig(({ mode }) => ({
   plugins: [
     webflowKit({
       mode,
       ...config,
-      cdn: process.env.PUBLIC_ASSET_URL
-    })
-  ]
+      cdn: process.env.PUBLIC_ASSET_URL,
+    }),
+  ],
 }));
 ```
 
@@ -68,15 +68,15 @@ You can also set `cdn` in `webflow.config.js`. The value passed to `webflowKit()
 
 ```js
 export default {
-  name: 'my-site',
+  name: "my-site",
   assets: {
-    js: 'bundle.js',
-    css: 'bundle.css'
+    js: "bundle.js",
+    css: "bundle.css",
   },
   environments: {
-    staging: { path: 'staging' },
-    production: { path: 'production' }
-  }
+    staging: { path: "staging" },
+    production: { path: "production" },
+  },
 };
 ```
 
@@ -84,18 +84,18 @@ export default {
 
 Copy `.env.example` from this repo into the **site**.
 
-| Variable | Required | Role |
-| -------- | -------- | ---- |
-| `PUBLIC_ASSET_URL` | for public deploy URLs | CDN origin passed as `cdn` |
-| `WEBFLOW_STAGING_URL` | for `pnpm dev` | Published `*.webflow.io` URL; opened with `?nc-env=dev` |
-| `WEBFLOW_SYNC_STAGING` | no | Default `true`. Set `false` to skip JS+CSS uploads during `pnpm dev` |
-| `R2_ACCOUNT_ID` | for deploy | Cloudflare account id |
-| `R2_ACCESS_KEY_ID` | for deploy | R2 access key |
-| `R2_SECRET_ACCESS_KEY` | for deploy | R2 secret |
-| `R2_BUCKET` | for deploy | Bucket name |
-| `PROJECT_ID` | no | Overrides `name` for the R2 prefix |
-| `R2_STAGING_PREFIX` | no | Defaults to `staging` |
-| `R2_PRODUCTION_PREFIX` | no | Defaults to `production` |
+| Variable               | Required               | Role                                                                 |
+| ---------------------- | ---------------------- | -------------------------------------------------------------------- |
+| `PUBLIC_ASSET_URL`     | for public deploy URLs | CDN origin passed as `cdn`                                           |
+| `WEBFLOW_STAGING_URL`  | for `pnpm dev`         | Published `*.webflow.io` URL; opened with `?nc-env=dev`              |
+| `WEBFLOW_SYNC_STAGING` | no                     | Default `true`. Set `false` to skip JS+CSS uploads during `pnpm dev` |
+| `R2_ACCOUNT_ID`        | for deploy             | Cloudflare account id                                                |
+| `R2_ACCESS_KEY_ID`     | for deploy             | R2 access key                                                        |
+| `R2_SECRET_ACCESS_KEY` | for deploy             | R2 secret                                                            |
+| `R2_BUCKET`            | for deploy             | Bucket name                                                          |
+| `PROJECT_ID`           | no                     | Overrides `name` for the R2 prefix                                   |
+| `R2_STAGING_PREFIX`    | no                     | Defaults to `staging`                                                |
+| `R2_PRODUCTION_PREFIX` | no                     | Defaults to `production`                                             |
 
 Shared across sites on the same account: R2 keys, `PUBLIC_ASSET_URL`. Per site: `name` and `WEBFLOW_STAGING_URL`.
 
@@ -106,7 +106,10 @@ If `WEBFLOW_STAGING_URL` is empty, Vite still starts and logs a warning. It does
 Site Settings → Custom Code → Head. Staging CSS first (static `<link>`, so the Designer canvas can load it), then the loader. Do not add `bundle.js`. Host the loader on **your** CDN. `data-project` must equal `name`:
 
 ```html
-<link rel="stylesheet" href="https://cdn.example.com/my-site/staging/bundle.css" />
+<link
+  rel="stylesheet"
+  href="https://cdn.example.com/my-site/staging/bundle.css"
+/>
 <script src="https://cdn.example.com/loader.js" data-project="my-site"></script>
 ```
 
@@ -151,9 +154,13 @@ R2 keys:
 ```text
 {name}/staging/bundle.js
 {name}/staging/bundle.css
+{name}/staging/assets/[name]-[hash].js
 {name}/production/bundle.js
 {name}/production/bundle.css
+{name}/production/assets/[name]-[hash].js
 ```
+
+Code-split chunks stay next to the entry on the CDN (`./assets/…` from `bundle.js`). Override the pattern with `assets.chunks`.
 
 CLI (same thing, from the site cwd after a build):
 
@@ -164,18 +171,19 @@ webflow-kit deploy production
 
 ## Plugin options
 
-| Option | Default | Description |
-| ------ | ------- | ----------- |
-| `cdn` | `PUBLIC_ASSET_URL` | Public CDN origin (no trailing slash) |
-| `mode` | from Vite | `staging` or `production` |
-| `name` | `PROJECT_ID` or `project` | R2 folder |
-| `entry` | `./src/js/main.js` | JS entry |
-| `outDir` | `dist` | Build output |
-| `assets.js` | `bundle.js` | Uploaded JS filename |
-| `assets.css` | `bundle.css` | Uploaded CSS filename |
-| `environments.staging.path` | `staging` | Folder under `{name}/` |
-| `environments.production.path` | `production` | Folder under `{name}/` |
-| `server` | HTTP `localhost:3000` | Vite `server` overrides |
+| Option                         | Default                   | Description                           |
+| ------------------------------ | ------------------------- | ------------------------------------- |
+| `cdn`                          | `PUBLIC_ASSET_URL`        | Public CDN origin (no trailing slash) |
+| `mode`                         | from Vite                 | `staging` or `production`             |
+| `name`                         | `PROJECT_ID` or `project` | R2 folder                             |
+| `entry`                        | `./src/js/main.js`        | JS entry                              |
+| `outDir`                       | `dist`                    | Build output                          |
+| `assets.js`                    | `bundle.js`               | Uploaded JS filename                  |
+| `assets.css`                   | `bundle.css`              | Uploaded CSS filename                 |
+| `assets.chunks`                | `assets/[name]-[hash].js` | Code-split chunk filenames            |
+| `environments.staging.path`    | `staging`                 | Folder under `{name}/`                |
+| `environments.production.path` | `production`              | Folder under `{name}/`                |
+| `server`                       | HTTP `localhost:3000`     | Vite `server` overrides               |
 
 Default server: `host: true`, `strictPort: true`, `cors: true`, HMR on `ws://localhost:3000`. Override via `server` in `webflow.config.js` if a site cannot use port 3000 — then set the loader `data-dev-origin` to match.
 

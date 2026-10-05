@@ -1,13 +1,17 @@
 export function isStagingSyncEnabled() {
-  const raw = (process.env.WEBFLOW_SYNC_STAGING || process.env.WEBFLOW_SYNC_STAGING_CSS || 'true')
+  const raw = (
+    process.env.WEBFLOW_SYNC_STAGING ||
+    process.env.WEBFLOW_SYNC_STAGING_CSS ||
+    "true"
+  )
     .trim()
     .toLowerCase();
 
-  return raw !== '0' && raw !== 'false' && raw !== 'off';
+  return raw !== "0" && raw !== "false" && raw !== "off";
 }
 
 export function getDevOpenUrl() {
-  const raw = (process.env.WEBFLOW_STAGING_URL || '').trim();
+  const raw = (process.env.WEBFLOW_STAGING_URL || "").trim();
 
   if (!raw) {
     return false;
@@ -15,7 +19,7 @@ export function getDevOpenUrl() {
 
   try {
     const url = new URL(raw);
-    url.searchParams.set('nc-env', 'dev');
+    url.searchParams.set("nc-env", "dev");
     return url.href;
   } catch {
     console.warn(`[webflow-kit] Invalid WEBFLOW_STAGING_URL: ${raw}`);
@@ -23,17 +27,19 @@ export function getDevOpenUrl() {
   }
 }
 
-function trimTrailingSlash(value = '') {
-  return value.replace(/\/$/, '');
+function trimTrailingSlash(value = "") {
+  return value.replace(/\/$/, "");
 }
 
 function resolveCdn(rawCdn) {
-  return trimTrailingSlash(rawCdn || process.env.PUBLIC_ASSET_URL || '');
+  return trimTrailingSlash(rawCdn || process.env.PUBLIC_ASSET_URL || "");
 }
 
 function resolveServer(rawServer = {}) {
   const port = rawServer.port ?? 3000;
-  const open = Object.prototype.hasOwnProperty.call(rawServer, 'open') ? rawServer.open : getDevOpenUrl();
+  const open = Object.prototype.hasOwnProperty.call(rawServer, "open")
+    ? rawServer.open
+    : getDevOpenUrl();
 
   return {
     host: true,
@@ -44,19 +50,19 @@ function resolveServer(rawServer = {}) {
     port,
     origin: rawServer.origin ?? `http://localhost:${port}`,
     hmr: {
-      host: 'localhost',
-      protocol: 'ws',
+      host: "localhost",
+      protocol: "ws",
       clientPort: port,
-      ...rawServer.hmr
+      ...rawServer.hmr,
     },
   };
 }
 
 export function resolveOptions(raw = {}) {
-  const name = raw.name || process.env.PROJECT_ID || 'project';
-  const entry = raw.entry || './src/js/main.js';
-  const outDir = raw.outDir || 'dist';
-  const mode = raw.mode || 'production';
+  const name = raw.name || process.env.PROJECT_ID || "project";
+  const entry = raw.entry || "./src/js/main.js";
+  const outDir = raw.outDir || "dist";
+  const mode = raw.mode || "production";
 
   return {
     ...raw,
@@ -66,40 +72,41 @@ export function resolveOptions(raw = {}) {
     mode,
     cdn: resolveCdn(raw.cdn),
     assets: {
-      js: raw.assets?.js || 'bundle.js',
-      css: raw.assets?.css || 'bundle.css'
+      js: raw.assets?.js || "bundle.js",
+      css: raw.assets?.css || "bundle.css",
+      chunks: raw.assets?.chunks || "assets/[name]-[hash].js",
     },
     environments: {
       staging: {
-        path: raw.environments?.staging?.path || 'staging'
+        path: raw.environments?.staging?.path || "staging",
       },
       production: {
-        path: raw.environments?.production?.path || 'production'
-      }
+        path: raw.environments?.production?.path || "production",
+      },
     },
-    server: resolveServer(raw.server)
+    server: resolveServer(raw.server),
   };
 }
 
 export async function loadProjectConfig(cwd = process.cwd()) {
-  const { pathToFileURL } = await import('node:url');
-  const { resolve } = await import('node:path');
-  const configPath = resolve(cwd, 'webflow.config.js');
+  const { pathToFileURL } = await import("node:url");
+  const { resolve } = await import("node:path");
+  const configPath = resolve(cwd, "webflow.config.js");
   const module = await import(pathToFileURL(configPath).href);
 
   return resolveOptions(module.default);
 }
 
 export function getCdnOrigin(options) {
-  return trimTrailingSlash(options.cdn || '');
+  return trimTrailingSlash(options.cdn || "");
 }
 
 export function getProjectId(options) {
   return process.env.PROJECT_ID || options.name;
 }
 
-function trimPrefix(value = '') {
-  return value.replace(/^\/+|\/+$/g, '');
+function trimPrefix(value = "") {
+  return value.replace(/^\/+|\/+$/g, "");
 }
 
 function joinProjectPrefix(projectId, environmentPath) {
@@ -118,9 +125,15 @@ function joinProjectPrefix(projectId, environmentPath) {
 }
 
 export function getStagingPrefix(options) {
-  return joinProjectPrefix(getProjectId(options), process.env.R2_STAGING_PREFIX || options.environments.staging.path);
+  return joinProjectPrefix(
+    getProjectId(options),
+    process.env.R2_STAGING_PREFIX || options.environments.staging.path,
+  );
 }
 
 export function getProductionPrefix(options) {
-  return joinProjectPrefix(getProjectId(options), process.env.R2_PRODUCTION_PREFIX || options.environments.production.path);
+  return joinProjectPrefix(
+    getProjectId(options),
+    process.env.R2_PRODUCTION_PREFIX || options.environments.production.path,
+  );
 }

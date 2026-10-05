@@ -1,38 +1,39 @@
-import { resolveOptions } from './config.js';
-import { createStagingSyncPlugin } from './staging-sync.js';
+import { resolveOptions } from "./config.js";
+import { createStagingSyncPlugin } from "./staging-sync.js";
 
 function createConfigPlugin(options) {
-  const isProduction = options.mode === 'production';
-  const isStagingSync = process.env.WEBFLOW_STAGING_SYNC === '1';
+  const isProduction = options.mode === "production";
+  const isStagingSync = process.env.WEBFLOW_STAGING_SYNC === "1";
 
   return {
-    name: 'webflow-kit-config',
+    name: "webflow-kit-config",
     config() {
       return {
         build: {
           outDir: options.outDir,
           emptyOutDir: true,
           sourcemap: isStagingSync ? false : !isProduction,
-          minify: isProduction ? 'oxc' : false,
+          minify: isProduction ? "oxc" : false,
           lib: {
             entry: options.entry,
-            formats: ['es'],
-            fileName: () => options.assets.js
+            formats: ["es"],
+            fileName: () => options.assets.js,
           },
           rollupOptions: {
             output: {
               entryFileNames: options.assets.js,
+              chunkFileNames: options.assets.chunks,
               assetFileNames: (assetInfo) => {
-                if (assetInfo.name?.endsWith('.css')) {
+                if (assetInfo.name?.endsWith(".css")) {
                   return options.assets.css;
                 }
 
-                return 'assets/[name][extname]';
-              }
-            }
-          }
+                return "assets/[name][extname]";
+              },
+            },
+          },
         },
-        server: options.server
+        server: options.server,
       };
     },
     configureServer() {
@@ -40,12 +41,14 @@ function createConfigPlugin(options) {
         return;
       }
 
-      if ((process.env.WEBFLOW_STAGING_URL || '').trim()) {
+      if ((process.env.WEBFLOW_STAGING_URL || "").trim()) {
         return;
       }
 
-      console.warn('[webflow-kit] Set WEBFLOW_STAGING_URL to open Webflow staging on `pnpm dev`.');
-    }
+      console.warn(
+        "[webflow-kit] Set WEBFLOW_STAGING_URL to open Webflow staging on `pnpm dev`.",
+      );
+    },
   };
 }
 
