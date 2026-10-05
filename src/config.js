@@ -35,6 +35,16 @@ function resolveCdn(rawCdn) {
   return trimTrailingSlash(rawCdn || process.env.PUBLIC_ASSET_URL || "");
 }
 
+function resolveUploadInclude(include) {
+  if (!Array.isArray(include) || include.length === 0) {
+    return null;
+  }
+
+  return include.map((extension) =>
+    String(extension).trim().toLowerCase().replace(/^\./, ""),
+  );
+}
+
 function resolveServer(rawServer = {}) {
   const port = rawServer.port ?? 3000;
   const open = Object.prototype.hasOwnProperty.call(rawServer, "open")
@@ -75,6 +85,9 @@ export function resolveOptions(raw = {}) {
       js: raw.assets?.js || "bundle.js",
       css: raw.assets?.css || "bundle.css",
       chunks: raw.assets?.chunks || "assets/[name]-[hash].js",
+    },
+    upload: {
+      include: resolveUploadInclude(raw.upload?.include),
     },
     environments: {
       staging: {

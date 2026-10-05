@@ -60,7 +60,44 @@ function toPosix(relative) {
   return relative.split(path.sep).join("/");
 }
 
-async function listExtraScripts(outDir, entryName) {
+const contentTypes = {
+  css: "text/css; charset=utf-8",
+  gif: "image/gif",
+  html: "text/html; charset=utf-8",
+  ico: "image/x-icon",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  js: "application/javascript; charset=utf-8",
+  json: "application/json; charset=utf-8",
+  map: "application/json; charset=utf-8",
+  mjs: "application/javascript; charset=utf-8",
+  otf: "font/otf",
+  png: "image/png",
+  svg: "image/svg+xml",
+  ttf: "font/ttf",
+  txt: "text/plain; charset=utf-8",
+  webmanifest: "application/manifest+json",
+  webp: "image/webp",
+  woff: "font/woff",
+  woff2: "font/woff2",
+  xml: "application/xml",
+};
+
+export function contentTypeFor(fileName) {
+  const extension = path.extname(fileName).slice(1).toLowerCase();
+  return contentTypes[extension] || "application/octet-stream";
+}
+
+export function isIncludedUpload(fileName, include) {
+  if (!include?.length) {
+    return true;
+  }
+
+  const extension = path.extname(fileName).slice(1).toLowerCase();
+  return include.includes(extension);
+}
+
+async function listDistFiles(outDir, include) {
   let entries;
 
   try {
@@ -70,25 +107,27 @@ async function listExtraScripts(outDir, entryName) {
     });
   } catch (error) {
     if (error.code === "ENOENT") {
-      return [];
+      throw new Error(`Build output not found: ${outDir}`);
     }
 
     throw error;
   }
 
   return entries.flatMap((entry) => {
-    if (!entry.isFile() || !entry.name.endsWith(".js")) {
+    if (!entry.isFile() || !isIncludedUpload(entry.name, include)) {
       return [];
     }
 
     const source = path.join(entry.parentPath, entry.name);
     const relative = toPosix(path.relative(outDir, source));
 
-    if (relative === entryName) {
-      return [];
-    }
-
-    return [{ source, relative }];
+    return [
+      {
+        source,
+        relative,
+        contentType: contentTypeFor(entry.name),
+      },
+    ];
   });
 }
 
@@ -111,32 +150,19 @@ export async function uploadObject({
   );
 }
 
-export async function uploadStagingAssets(
-  { js, css, chunks = [] },
-  rawOptions,
-) {
+export async function uploadStagingAssets({ files: outputs }, rawOptions) {
   const options = resolveOptions(rawOptions ?? (await loadProjectConfig()));
   const prefix = getStagingPrefix(options);
   const cdn = getCdnOrigin(options);
   const cacheControl = "no-cache, must-revalidate";
 
-  const files = [
-    {
-      body: js,
-      destination: `${prefix}/${options.assets.js}`,
-      contentType: "application/javascript; charset=utf-8",
-    },
-    {
-      body: css,
-      destination: `${prefix}/${options.assets.css}`,
-      contentType: "text/css; charset=utf-8",
-    },
-    ...chunks.map((chunk) => ({
-      body: chunk.code,
-      destination: `${prefix}/${chunk.fileName}`,
-      contentType: "application/javascript; charset=utf-8",
-    })),
-  ];
+  const files = outputs
+    .filter((file) => isIncludedUpload(file.fileName, options.upload.include))
+    .map((file) => ({
+      body: file.body,
+      destination: `${prefix}/${toPosix(file.fileName)}`,
+      contentType: contentTypeFor(file.fileName),
+    }));
 
   const uploaded = [];
 
@@ -175,25 +201,17 @@ export async function deployEnvironment(environment, rawOptions) {
       ? "public, max-age=3600"
       : "no-cache, must-revalidate";
 
-  const chunks = await listExtraScripts(options.outDir, options.assets.js);
+  const files = (
+    await listDistFiles(options.outDir, options.upload.include)
+  ).map((file) => ({
+    source: file.source,
+    destination: `${prefix}/${file.relative}`,
+    contentType: file.contentType,
+  }));
 
-  const files = [
-    {
-      source: path.resolve(options.outDir, options.assets.js),
-      destination: `${prefix}/${options.assets.js}`,
-      contentType: "application/javascript; charset=utf-8",
-    },
-    {
-      source: path.resolve(options.outDir, options.assets.css),
-      destination: `${prefix}/${options.assets.css}`,
-      contentType: "text/css; charset=utf-8",
-    },
-    ...chunks.map((chunk) => ({
-      source: chunk.source,
-      destination: `${prefix}/${chunk.relative}`,
-      contentType: "application/javascript; charset=utf-8",
-    })),
-  ];
+  if (files.length === 0) {
+    throw new Error(`No files to upload in ${options.outDir}`);
+  }
 
   for (const file of files) {
     const body = await fs.readFile(file.source);

@@ -61,17 +61,21 @@ async function buildStagingAssets(options) {
     const outputs = (Array.isArray(result) ? result : [result]).flatMap(
       (item) => item.output || [],
     );
-    const js = outputs.find(
-      (item) => item.type === "chunk" && item.fileName === options.assets.js,
-    );
-    const css = outputs.find(
-      (item) => item.type === "asset" && item.fileName === options.assets.css,
-    );
-    const chunks = outputs.filter(
-      (item) => item.type === "chunk" && item.fileName !== options.assets.js,
-    );
+    const files = outputs.flatMap((item) => {
+      if (item.type === "chunk") {
+        return [{ fileName: item.fileName, body: item.code }];
+      }
 
-    if (!js?.code) {
+      if (item.type === "asset") {
+        return [{ fileName: item.fileName, body: item.source }];
+      }
+
+      return [];
+    });
+    const js = files.find((item) => item.fileName === options.assets.js);
+    const css = files.find((item) => item.fileName === options.assets.css);
+
+    if (!js?.body) {
       throw new Error(`Build did not produce ${options.assets.js}`);
     }
 
@@ -79,21 +83,14 @@ async function buildStagingAssets(options) {
       throw new Error(`Build did not produce ${options.assets.css}`);
     }
 
-    return {
-      js: js.code,
-      css: css.source,
-      chunks: chunks.map((item) => ({
-        fileName: item.fileName,
-        code: item.code,
-      })),
-    };
+    return { files };
   } finally {
     delete process.env.WEBFLOW_STAGING_SYNC;
   }
 }
 
 async function syncStaging(options) {
-  console.log("[webflow-kit] Syncing staging JS + CSS…");
+  console.log("[webflow-kit] Syncing staging assets…");
 
   const assets = await buildStagingAssets(options);
   const uploaded = await uploadStagingAssets(assets, options);

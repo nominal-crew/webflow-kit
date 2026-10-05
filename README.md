@@ -5,19 +5,19 @@ Vite plugin and CLI for Webflow site repos. Internal agency tooling, published p
 It does **not** ship a CDN origin. Each site passes its own `cdn` (or `PUBLIC_ASSET_URL` in `.env`).
 
 - **Dev:** HTTP Vite on `http://localhost:3000`, then open the site’s Webflow staging URL with `?nc-env=dev` so the site loader pulls local modules. JS and CSS are also rebuilt and uploaded to `{name}/staging/` on start and on every save.
-- **Deploy:** upload `dist/bundle.js`, `dist/bundle.css`, and code-split chunks (`dist/assets/[name]-[hash].js`) to R2 under `{name}/staging/` or `{name}/production/`.
+- **Deploy:** upload every file in `dist/` to R2 under `{name}/staging/` or `{name}/production/`. Restrict extensions with `upload.include`.
 
 This directory is the **package root**. Depend on it from each site; do not copy it into a site as source.
 
 ## What a site gets
 
-| Command in the site repo | What the kit does                                                                                                         |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev` (`vite`)      | HTTP dev server, CORS, CSS HMR, full reload on JS, open `WEBFLOW_STAGING_URL?nc-env=dev`, upload staging JS + CSS on save |
-| `pnpm deploy:staging`    | Build unminified + sourcemaps, upload JS, CSS, and chunks to `{name}/staging/`                                            |
-| `pnpm deploy:production` | Build minified, upload JS, CSS, and chunks to `{name}/production/`                                                        |
+| Command in the site repo | What the kit does                                                                                                          |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev` (`vite`)      | HTTP dev server, CORS, CSS HMR, full reload on JS, open `WEBFLOW_STAGING_URL?nc-env=dev`, upload the staging build on save |
+| `pnpm deploy:staging`    | Build unminified + sourcemaps, upload every file in `dist/` to `{name}/staging/`                                           |
+| `pnpm deploy:production` | Build minified, upload every file in `dist/` to `{name}/production/`                                                       |
 
-`pnpm dev` uploads JS + CSS to **staging only** (never production). Production still requires `deploy:production`. Disable the save-sync with `WEBFLOW_SYNC_STAGING=false`.
+`pnpm dev` uploads the build output to **staging only** (never production). Production still requires `deploy:production`. Disable the save-sync with `WEBFLOW_SYNC_STAGING=false`.
 
 ## Add it to a site
 
@@ -154,10 +154,18 @@ R2 keys:
 ```text
 {name}/staging/bundle.js
 {name}/staging/bundle.css
-{name}/staging/assets/[name]-[hash].js
+{name}/staging/assets/…
 {name}/production/bundle.js
 {name}/production/bundle.css
-{name}/production/assets/[name]-[hash].js
+{name}/production/assets/…
+```
+
+Every file written to `dist/` is uploaded, keeping its relative path. Omit `upload.include` to send all of them. Set it to allow only some extensions:
+
+```js
+upload: {
+  include: ["js", "css", "svg", "png", "webp", "woff2"],
+}
 ```
 
 Code-split chunks stay next to the entry on the CDN (`./assets/…` from `bundle.js`). Override the pattern with `assets.chunks`.
@@ -181,6 +189,7 @@ webflow-kit deploy production
 | `assets.js`                    | `bundle.js`               | Uploaded JS filename                  |
 | `assets.css`                   | `bundle.css`              | Uploaded CSS filename                 |
 | `assets.chunks`                | `assets/[name]-[hash].js` | Code-split chunk filenames            |
+| `upload.include`               | all files                 | Allowed extensions, without the dot   |
 | `environments.staging.path`    | `staging`                 | Folder under `{name}/`                |
 | `environments.production.path` | `production`              | Folder under `{name}/`                |
 | `server`                       | HTTP `localhost:3000`     | Vite `server` overrides               |
