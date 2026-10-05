@@ -42,5 +42,8 @@
   },
   "peerDependencies": {
     "vite": "^8.0.0"
+  },
+  "scripts": {
+    "release": "pnpm publish --access public"
   }
 }
